@@ -13,6 +13,7 @@ source = {
 }
 dependencies = {
   "lua >= 5.1",
+  "luatypechecks >= 1.3.3, < 2.0",
 }
 test_dependencies = {
   "luaunit >= 3.4, < 4.0",
@@ -20,6 +21,8 @@ test_dependencies = {
 build = {
   type = "builtin",
   modules = {
+    ["luaserialization.data"] = "data.lua",
+    ["luaserialization.data_test"] = "data_test.lua",
   },
   copy_directories = {
     "doc",

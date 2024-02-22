@@ -7,6 +7,7 @@ full_description = [[
   For more details, see topic @{README.md}.
 ]]
 file = {
+  "data.lua",
 }
 topics = {
   "README.md",
