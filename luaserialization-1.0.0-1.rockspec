@@ -18,6 +18,7 @@ dependencies = {
 }
 test_dependencies = {
   "luaunit >= 3.4, < 4.0",
+  "middleclass >= 4.1.1, < 5.0",
 }
 build = {
   type = "builtin",
@@ -26,6 +27,8 @@ build = {
     ["luaserialization.data_test"] = "data_test.lua",
     ["luaserialization.string"] = "string.lua",
     ["luaserialization.string_test"] = "string_test.lua",
+    ["luaserialization.stringifiable"] = "stringifiable.lua",
+    ["luaserialization.stringifiable_test"] = "stringifiable_test.lua",
   },
   copy_directories = {
     "doc",
