@@ -1,6 +1,7 @@
 project = "luaserialization"
 file = {
   "data.lua",
+  "string.lua",
 }
 topics = {
   "README.md",
