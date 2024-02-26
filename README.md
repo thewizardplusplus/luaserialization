@@ -10,6 +10,13 @@ The library that implements various auxiliary functions for serialization.
 
 _**Disclaimer:** this library was written directly on an Android smartphone with the [QLua](https://play.google.com/store/apps/details?id=com.quseit.qlua5pro2) IDE._
 
+## Features
+
+- `data.to_data()` function &mdash; this function recursively calls the `__data()` metamethod if it exists;
+- serialization to string:
+  - `string.to_string()` function &mdash; this function calls the `data.to_data()` function and then applies library [inspect.lua](https://github.com/kikito/inspect.lua);
+  - `Stringifiable` mixin &mdash; this mixin adds the `__tostring()` metamethod that calls the `string.to_string()` function.
+
 ## Installation
 
 ```
