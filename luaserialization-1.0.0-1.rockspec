@@ -29,6 +29,7 @@ build = {
     ["luaserialization.string_test"] = "string_test.lua",
     ["luaserialization.stringifiable"] = "stringifiable.lua",
     ["luaserialization.stringifiable_test"] = "stringifiable_test.lua",
+    ["luaserialization.vendor.json"] = "vendor/json.lua",
   },
   copy_directories = {
     "doc",
