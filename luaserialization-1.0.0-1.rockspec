@@ -15,6 +15,7 @@ dependencies = {
   "lua >= 5.1",
   "luatypechecks >= 1.3.3, < 2.0",
   "inspect >= 3.1.3, < 4.0",
+  "compat53 >= 0.13, < 1.0",
 }
 test_dependencies = {
   "luaunit >= 3.4, < 4.0",
