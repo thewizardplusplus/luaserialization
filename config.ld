@@ -10,6 +10,7 @@ file = {
   "data.lua",
   "string.lua",
   "stringifiable.lua",
+  "json.lua",
 }
 topics = {
   "README.md",
