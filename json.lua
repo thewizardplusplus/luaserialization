@@ -23,6 +23,21 @@ function json.to_json(value)
   return encoded_data
 end
 
+--- ⚠️. This function transforms the text in the JSON to a data.
+-- @tparam string text
+-- @treturn any
+-- @error error message
+function json.from_json(text)
+  assertions.is_string(text)
+
+  local decoded_data, err = json._catch_error(json_module.decode, text)
+  if err ~= nil then
+    return nil, "unable to decode the data: " .. err
+  end
+
+  return decoded_data
+end
+
 function json._catch_error(handler, ...)
   assertions.is_function(handler)
 
