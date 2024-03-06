@@ -134,3 +134,81 @@ for _, data in ipairs({
     end
   end
 end
+
+-- json_module.from_json()
+for _, data in ipairs({
+  {
+    name = "test_from_json/nil",
+    args = { text = "null" },
+    want = nil,
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/boolean",
+    args = { text = "true" },
+    want = true,
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/number/integer",
+    args = { text = "23" },
+    want = 23,
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/number/float",
+    args = { text = "2.3" },
+    want = 2.3,
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/string",
+    args = { text = [["test"]] },
+    want = "test",
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/table/sequence",
+    args = { text = [=[["one","two"]]=] },
+    want = {"one", "two"},
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/table/sequence/with_hierarchy",
+    args = { text = [=[[{"one":1},{"two":2}]]=] },
+    want = {{ one = 1 }, { two = 2 }},
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/table/not_sequence",
+    args = { text = [[{"one":1}]] },
+    want = { one = 1 },
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/table/not_sequence/with_hierarchy",
+    args = { text = [[{"one":[1,2]}]] },
+    want = { one = {1, 2} },
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/error",
+    args = { text = "invalid-json" },
+    want = nil,
+    want_err = "^unable to decode the data: "
+      .. ".+: "
+      .. "unexpected character 'i' at line 1 col 1$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = json_module.from_json(data.args.text)
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
