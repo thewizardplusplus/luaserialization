@@ -192,16 +192,70 @@ for _, data in ipairs({
     want_err = nil,
   },
   {
-    name = "test_from_json/error",
+    name = "test_from_json/table/not_sequence/with_schema",
+    args = {
+      text = [[{"one":[1,2]}]],
+      schema = {
+        type = "object",
+        required = {"one"},
+        properties = {
+          one = {
+            type = "array",
+            items = { type = "number" },
+            minItems = 2,
+            maxItems = 2,
+          },
+        },
+      },
+    },
+    want = { one = {1, 2} },
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/error/invalid_json",
     args = { text = "invalid-json" },
     want = nil,
     want_err = "^unable to decode the data: "
       .. ".+: "
       .. "unexpected character 'i' at line 1 col 1$",
   },
+  {
+    name = "test_from_json/error/invalid_schema",
+    args = {
+      text = [[{"one":[1,2]}]],
+      schema = { type = "invalid-type" },
+    },
+    want = nil,
+    want_err = "^unable to generate the validator: "
+      .. ".+: "
+      .. "invalid JSON type: "
+      .. "invalid%-type$",
+  },
+  {
+    name = "test_from_json/error/invalid_data",
+    args = {
+      text = [[{"one":[1,2,3]}]],
+      schema = {
+        type = "object",
+        required = {"one"},
+        properties = {
+          one = {
+            type = "array",
+            items = { type = "number" },
+            minItems = 2,
+            maxItems = 2,
+          },
+        },
+      },
+    },
+    want = nil,
+    want_err = "^invalid data: "
+      .. [[property "one" validation failed: ]]
+      .. "expect array to have at least 2 items$",
+  },
 }) do
   TestJson[data.name] = function()
-    local result, err = json_module.from_json(data.args.text)
+    local result, err = json_module.from_json(data.args.text, data.args.schema)
 
     luaunit.assert_equals(result, data.want)
     if data.want_err == nil then
