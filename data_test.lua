@@ -87,6 +87,11 @@ for _, data in ipairs({
     want = {{ one = 1, two = 2 }, { three = 3, four = 4 }},
   },
   {
+    name = "test_to_data/table/sequence/with_name_metaproperty",
+    args = { value = setmetatable({"one", "two"}, { __name = "name" }) },
+    want = {"one", "two"},
+  },
+  {
     name = "test_to_data/table/not_sequence",
     args = { value = { one = 1, two = 2 } },
     want = { one = 1, two = 2 },
@@ -118,6 +123,45 @@ for _, data in ipairs({
       object_1 = { field_1 = 112, field_2 = "test-12" },
       object_2 = { field_1 = 123, field_2 = "test-23" },
     },
+  },
+  {
+    name = "test_to_data/table/not_sequence/with_name_metaproperty",
+    args = { value = setmetatable({ one = 1, two = 2 }, { __name = "name" }) },
+    want = { __name = "name", one = 1, two = 2 },
+  },
+  {
+    name = "test_to_data"
+      .. "/table/not_sequence"
+      .. "/with_name_metaproperty/invalid_type",
+    args = { value = setmetatable({ one = 1, two = 2 }, { __name = 23 }) },
+    want = { one = 1, two = 2 },
+  },
+  {
+    name = "test_to_data/table/not_sequence/with_name_metaproperty/overriding",
+    args = {
+      value = setmetatable(
+        { __name = "name-one", one = 1, two = 2 },
+        { __name = "name-two" }
+      ),
+    },
+    want = { __name = "name-two", one = 1, two = 2 },
+  },
+  {
+    name = "test_to_data"
+      .. "/table/not_sequence"
+      .. "/with_name_metaproperty/with_data_metamethod",
+    args = {
+      value = setmetatable(
+        { one = 1, two = 2 },
+        {
+          __name = "name",
+          __data = function()
+            return { one = 1, two = 2 }
+          end,
+        }
+      ),
+    },
+    want = { __name = "name", one = 1, two = 2 },
   },
 }) do
   TestData[data.name] = function()

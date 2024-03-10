@@ -12,7 +12,8 @@ _**Disclaimer:** this library was written directly on an Android smartphone with
 
 ## Features
 
-- `data.to_data()` function &mdash; this function recursively calls the `__data()` metamethod if it exists;
+- `data.to_data()` function &mdash; this function recursively calls the `__data()` metamethod if it exists:
+  - supports for enhancing tables with the `__name` metaproperty;
 - serialization to string:
   - `string.to_string()` function &mdash; this function calls the `data.to_data()` function and then applies library [inspect.lua](https://github.com/kikito/inspect.lua);
   - `Stringifiable` mixin &mdash; this mixin adds the `__tostring()` metamethod that calls the `string.to_string()` function;
