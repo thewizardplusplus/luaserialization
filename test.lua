@@ -2,6 +2,7 @@ local luaunit = require("luaunit")
 
 for _, module in ipairs({
   "data",
+  "nameable",
   "string",
   "stringifiable",
   "json",

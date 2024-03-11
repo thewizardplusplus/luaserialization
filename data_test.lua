@@ -139,6 +139,21 @@ for _, data in ipairs({
     args = { value = setmetatable({ __name = "name-one", one = 1, two = 2 }, { __name = "name-two" }) },
     want = { __name = "name-two", one = 1, two = 2 },
   },
+  {
+    name = "test_to_data/table/not_sequence/with_name_metaproperty/with_data_metamethod",
+    args = {
+      value = setmetatable(
+        { one = 1, two = 2 },
+        {
+          __name = "name",
+          __data = function()
+            return { one = 1, two = 2 }
+          end,
+        }
+      ),
+    },
+    want = { __name = "name", one = 1, two = 2 },
+  },
 }) do
   TestData[data.name] = function()
     local result = data_module.to_data(data.args.value)

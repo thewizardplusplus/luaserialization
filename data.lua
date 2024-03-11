@@ -27,7 +27,7 @@ function data.to_data(value)
   end
 
   if not checks.is_sequence(value)
-    and checks.has_metaproperties(value, {"__name"})
+    and value_metatable ~= nil
     and checks.is_string(value_metatable.__name) then
     transformed_value.__name = value_metatable.__name
   end

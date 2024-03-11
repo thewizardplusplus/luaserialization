@@ -1,6 +1,7 @@
 project = "luaserialization"
 file = {
   "data.lua",
+  "nameable.lua",
   "string.lua",
   "stringifiable.lua",
   "json.lua",
