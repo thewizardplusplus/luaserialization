@@ -1,8 +1,33 @@
 local luaunit = require("luaunit")
 local json_module = require("luaserialization.json")
 local assertions = require("luatypechecks.assertions")
+local checks = require("luatypechecks.checks")
 
 local Object = {}
+
+function Object.from_options(options)
+  assertions.is_table(options)
+
+  if not checks.has_properties(options, {"name"}) then
+    error("the `name` option is missing")
+  end
+
+  if not checks.is_string(options.name) then
+    error("the `name` option has an invalid type")
+  end
+
+  local id_as_string = string.match(options.name, "^test%-(%d+)$")
+  if id_as_string == nil then
+    error("the `name` option has an invalid format")
+  end
+
+  local id = tonumber(id_as_string)
+  if id == nil then
+    error("unable to extract an ID from the `name` option")
+  end
+
+  return Object:new(id)
+end
 
 function Object:new(id)
   assertions.is_integer(id)
@@ -20,6 +45,20 @@ function Object:__data()
 end
 
 local ObjectWrapper = {}
+
+function ObjectWrapper.from_options(options)
+  assertions.is_table(options)
+
+  if not checks.has_properties(options, {"object"}) then
+    error("the `object` option is missing")
+  end
+
+  if not checks.has_properties(options.object, {"id"}) then
+    error("the `id` property of the `object` option is missing")
+  end
+
+  return ObjectWrapper:new(options.object.id)
+end
 
 function ObjectWrapper:new(id)
   assertions.is_integer(id)
@@ -212,6 +251,32 @@ for _, data in ipairs({
     want_err = nil,
   },
   {
+    name = "test_from_json/table/not_sequence/with_constructors",
+    args = {
+      text = [[{"one":{"__name":"Object","name":"test-23"}}]],
+      constructors = { Object = Object.from_options },
+    },
+    want = { one = Object:new(23) },
+    want_err = nil,
+  },
+  {
+    name = "test_from_json/table/not_sequence/with_constructors/with_hierarchy",
+    args = {
+      text = "{"
+        .. [["one":{]]
+        .. [["__name":"ObjectWrapper",]]
+        .. [["object":{"__name":"Object","name":"test-23"}]]
+        .. "}"
+        .. "}",
+      constructors = {
+        Object = Object.from_options,
+        ObjectWrapper = ObjectWrapper.from_options,
+      },
+    },
+    want = { one = ObjectWrapper:new(23) },
+    want_err = nil,
+  },
+  {
     name = "test_from_json/error/invalid_json",
     args = { text = "invalid-json" },
     want = nil,
@@ -253,9 +318,26 @@ for _, data in ipairs({
       .. [[property "one" validation failed: ]]
       .. "expect array to have at least 2 items$",
   },
+  {
+    name = "test_from_json/error/with_constructors",
+    args = {
+      text = [[{"one":{"__name":"Object","name":"test"}}]],
+      constructors = { Object = Object.from_options },
+    },
+    want = nil,
+    want_err = "^unable to apply the constructors: "
+      .. "unable to apply the constructors: "
+      .. "unable to call the constructor: "
+      .. ".+: "
+      .. "the `name` option has an invalid format",
+  },
 }) do
   TestJson[data.name] = function()
-    local result, err = json_module.from_json(data.args.text, data.args.schema)
+    local result, err = json_module.from_json(
+      data.args.text,
+      data.args.schema,
+      data.args.constructors
+    )
 
     luaunit.assert_equals(result, data.want)
     if data.want_err == nil then

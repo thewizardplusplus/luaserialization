@@ -5,6 +5,7 @@
 
 local data_module = require("luaserialization.data")
 local json_module = require("luaserialization.vendor.json")
+local checks = require("luatypechecks.checks")
 local assertions = require("luatypechecks.assertions")
 local jsonschema = require("luaserialization.vendor.jsonschema")
 
@@ -27,11 +28,13 @@ end
 --- ⚠️. This function transforms the text in the JSON to a data.
 -- @tparam string text
 -- @tparam[opt] tab schema JSON Schema
+-- @tparam[optchain] {[string]=func,...} constructors constructors for tables with the `__name` property; the values should be `func(options: tab): tab`
 -- @treturn any
 -- @error error message
-function json.from_json(text, schema)
+function json.from_json(text, schema, constructors)
   assertions.is_string(text)
   assertions.is_table_or_nil(schema)
+  assertions.is_table_or_nil(constructors, checks.is_string, checks.is_callable)
 
   local decoded_data, err = json._catch_error(json_module.decode, text)
   if err ~= nil then
@@ -53,6 +56,13 @@ function json.from_json(text, schema)
     end
   end
 
+  if constructors ~= nil then
+    decoded_data, err = json._apply_constructors(decoded_data, constructors)
+    if err ~= nil then
+      return nil, "unable to apply the constructors: " .. err
+    end
+  end
+
   return decoded_data
 end
 
@@ -68,6 +78,36 @@ function json._catch_error(handler, ...)
   end
 
   return result
+end
+
+function json._apply_constructors(value, constructors)
+  assertions.is_table(constructors, checks.is_string, checks.is_callable)
+
+  if not checks.is_table(value) then
+    return value
+  end
+
+  local transformed_value = {}
+  for key, value in pairs(value) do -- luacheck: no redefined
+    local err
+    transformed_value[key], err = json._apply_constructors(value, constructors)
+    if err ~= nil then
+      return nil, "unable to apply the constructors: " .. err
+    end
+  end
+
+  if not checks.is_sequence(transformed_value)
+    and checks.has_properties(transformed_value, {"__name"})
+    and checks.has_properties(constructors, {transformed_value.__name}) then
+    local err
+    local constructor = constructors[transformed_value.__name]
+    transformed_value, err = json._catch_error(constructor, transformed_value)
+    if err ~= nil then
+      return nil, "unable to call the constructor: " .. err
+    end
+  end
+
+  return transformed_value
 end
 
 return json
