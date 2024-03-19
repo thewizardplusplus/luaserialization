@@ -28,7 +28,7 @@ end
 --- ⚠️. This function transforms the text in the JSON to a data.
 -- @tparam string text
 -- @tparam[opt] tab schema JSON Schema
--- @tparam[optchain] {[string]=func,...} constructors constructors for tables with the `__name` property; the values should be `func(options: tab): tab`
+-- @tparam[optchain] {[string]=func,...} constructors constructors for tables with the `__name` property; the values should be `func(options: tab): tab`; the constructor can either return an error as the second result or throw it as an exception
 -- @treturn any
 -- @error error message
 function json.from_json(text, schema, constructors)
@@ -70,11 +70,14 @@ function json._catch_error(handler, ...)
   assertions.is_function(handler)
 
   local arguments = table.pack(...)
-  local ok, result = pcall(function()
+  local ok, result, err = pcall(function()
     return handler(table.unpack(arguments))
   end)
   if not ok then
     return nil, result
+  end
+  if err ~= nil then
+    return nil, err
   end
 
   return result
