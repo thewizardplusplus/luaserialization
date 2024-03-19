@@ -1,11 +1,14 @@
 -- luacheck: no max comment line length
 
+--- ⚠️. This class is a mixin that adds the `__name` metaproperty to a class created by library [middleclass](https://github.com/kikito/middleclass). This metaproperty equals to the `name` property of the mix target class.
 -- @classmod Nameable
 
 local assertions = require("luatypechecks.assertions")
 
 local Nameable = {}
 
+---
+-- @tparam tab class a class created by library [middleclass](https://github.com/kikito/middleclass)
 function Nameable:included(class)
   assertions.is_table(class)
   assertions.has_properties(class, {"static"})
