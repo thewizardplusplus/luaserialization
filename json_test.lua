@@ -3,27 +3,47 @@ local json_module = require("luaserialization.json")
 local assertions = require("luatypechecks.assertions")
 local checks = require("luatypechecks.checks")
 
+local function _handle_error(err, use_exception)
+  assertions.is_string(err)
+  assertions.is_boolean(use_exception)
+
+  if use_exception then
+    error("exception: " .. err)
+  end
+
+  return nil, "error: " .. err
+end
+
 local Object = {}
 
-function Object.from_options(options)
+function Object.from_options(options, use_exception)
+  use_exception = use_exception or false
+
   assertions.is_table(options)
+  assertions.is_boolean(use_exception)
 
   if not checks.has_properties(options, {"name"}) then
-    error("the `name` option is missing")
+    return _handle_error("the `name` option is missing", use_exception)
   end
 
   if not checks.is_string(options.name) then
-    error("the `name` option has an invalid type")
+    return _handle_error("the `name` option has an invalid type", use_exception)
   end
 
   local id_as_string = string.match(options.name, "^test%-(%d+)$")
   if id_as_string == nil then
-    error("the `name` option has an invalid format")
+    return _handle_error(
+      "the `name` option has an invalid format",
+      use_exception
+    )
   end
 
   local id = tonumber(id_as_string)
   if id == nil then
-    error("unable to extract an ID from the `name` option")
+    return _handle_error(
+      "unable to extract an ID from the `name` option",
+      use_exception
+    )
   end
 
   return Object:new(id)
@@ -46,15 +66,21 @@ end
 
 local ObjectWrapper = {}
 
-function ObjectWrapper.from_options(options)
+function ObjectWrapper.from_options(options, use_exception)
+  use_exception = use_exception or false
+
   assertions.is_table(options)
+  assertions.is_boolean(use_exception)
 
   if not checks.has_properties(options, {"object"}) then
-    error("the `object` option is missing")
+    return _handle_error("the `object` option is missing", use_exception)
   end
 
   if not checks.has_properties(options.object, {"id"}) then
-    error("the `id` property of the `object` option is missing")
+    return _handle_error(
+      "the `id` property of the `object` option is missing",
+      use_exception
+    )
   end
 
   return ObjectWrapper:new(options.object.id)
@@ -319,7 +345,7 @@ for _, data in ipairs({
       .. "expect array to have at least 2 items$",
   },
   {
-    name = "test_from_json/error/with_constructors",
+    name = "test_from_json/error/with_constructors/without_error_throwing",
     args = {
       text = [[{"one":{"__name":"Object","name":"test"}}]],
       constructors = { Object = Object.from_options },
@@ -328,7 +354,27 @@ for _, data in ipairs({
     want_err = "^unable to apply the constructors: "
       .. "unable to apply the constructors: "
       .. "unable to call the constructor: "
+      .. "error: "
+      .. "the `name` option has an invalid format",
+  },
+  {
+    name = "test_from_json/error/with_constructors/with_error_throwing",
+    args = {
+      text = [[{"one":{"__name":"Object","name":"test"}}]],
+      constructors = {
+        Object = function(options)
+          assertions.is_table(options)
+
+          return Object.from_options(options, true)
+        end,
+      },
+    },
+    want = nil,
+    want_err = "^unable to apply the constructors: "
+      .. "unable to apply the constructors: "
+      .. "unable to call the constructor: "
       .. ".+: "
+      .. "exception: "
       .. "the `name` option has an invalid format",
   },
 }) do
