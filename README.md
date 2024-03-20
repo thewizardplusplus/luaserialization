@@ -17,7 +17,8 @@ _**Disclaimer:** this library was written directly on an Android smartphone with
 - serialization to JSON:
   - `json.to_json()` function &mdash; this function calls the `data.to_data()` function and then transforms the data into the JSON;
   - `json.from_json()` function &mdash; this function transforms the text in the JSON to a data:
-    - optionally, it can validate the data against a JSON Schema.
+    - optionally, it can validate the data against a JSON Schema;
+    - optionally, it can recreate tables with the `__name` property with the passed constructors.
 
 ## Installation
 
