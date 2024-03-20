@@ -1,6 +1,6 @@
 rockspec_format = "3.0"
 package = "luaserialization"
-version = "1.1.0-1"
+version = "1.2.0-1"
 description = {
   summary = "The library that implements various auxiliary functions for serialization.",
   license = "MIT",
@@ -9,7 +9,7 @@ description = {
 }
 source = {
   url = "git+https://github.com/thewizardplusplus/luaserialization.git",
-  tag = "v1.1.0",
+  tag = "v1.2.0",
 }
 dependencies = {
   "lua >= 5.1",
