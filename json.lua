@@ -8,6 +8,10 @@ local json_module = require("luaserialization.vendor.json")
 local checks = require("luatypechecks.checks")
 local assertions = require("luatypechecks.assertions")
 local jsonschema = require("luaserialization.vendor.jsonschema")
+local _ENV = require("compat53.module")
+if _VERSION == "Lua 5.1" then
+  setfenv(1, _ENV)
+end
 
 local json = {}
 
