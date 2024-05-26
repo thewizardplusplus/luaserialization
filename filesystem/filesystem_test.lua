@@ -1,11 +1,11 @@
 local luaunit = require("luaunit")
 local filesystem = require("luaserialization.filesystem.filesystem")
-local checks = require("luatypechecks.checks")
+local assertions = require("luatypechecks.assertions")
 
 local Object = {}
 
 function Object:new(id)
-  assert(checks.is_integer(id))
+  assertions.is_integer(id)
 
   local object = setmetatable({}, self)
   object.id = id
@@ -15,8 +15,8 @@ end
 
 function Object.__call() end
 
--- luacheck: globals TestFilesystem
-TestFilesystem = {}
+-- luacheck: globals TestFileSystem
+TestFileSystem = {}
 
 -- filesystem.is_file_opening_mode()
 for _, data in ipairs({
@@ -66,7 +66,7 @@ for _, data in ipairs({
     want = luaunit.assert_false,
   },
 }) do
-  TestFilesystem[data.name] = function()
+  TestFileSystem[data.name] = function()
     local result = filesystem.is_file_opening_mode(data.args.value)
 
     luaunit.assert_is_boolean(result)
@@ -154,7 +154,7 @@ for _, data in ipairs({
     want = luaunit.assert_false,
   },
 }) do
-  TestFilesystem[data.name] = function()
+  TestFileSystem[data.name] = function()
     local result = filesystem.is_file_system(data.args.value)
 
     luaunit.assert_is_boolean(result)
@@ -262,7 +262,7 @@ for _, data in ipairs({
     want = luaunit.assert_false,
   },
 }) do
-  TestFilesystem[data.name] = function()
+  TestFileSystem[data.name] = function()
     local result = filesystem.is_file(data.args.value)
 
     luaunit.assert_is_boolean(result)

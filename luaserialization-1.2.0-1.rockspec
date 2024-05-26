@@ -17,10 +17,10 @@ dependencies = {
   "inspect >= 3.1.3, < 4.0",
   "compat53 >= 0.13, < 1.0",
   "net-url >= 1.1, < 2.0",
+  "middleclass >= 4.1.1, < 5.0",
 }
 test_dependencies = {
   "luaunit >= 3.4, < 4.0",
-  "middleclass >= 4.1.1, < 5.0",
 }
 build = {
   type = "builtin",
