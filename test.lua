@@ -6,6 +6,7 @@ for _, module in ipairs({
   "string",
   "stringifiable",
   "json",
+  "filesystem.filesystem",
 }) do
   require("luaserialization." .. module .. "_test")
 end
