@@ -161,3 +161,111 @@ for _, data in ipairs({
     data.want(result)
   end
 end
+
+-- filesystem.is_file()
+for _, data in ipairs({
+  {
+    name = "test_is_file/nil",
+    args = {
+      value = nil,
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/boolean",
+    args = {
+      value = true,
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/number/integer",
+    args = {
+      value = 23,
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/number/float",
+    args = {
+      value = 2.3,
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/string",
+    args = {
+      value = "test",
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/function",
+    args = {
+      value = function() end,
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/table/empty",
+    args = {
+      value = {},
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/table/with_non-callable_values",
+    args = {
+      value = { read_all = 12, write = 23, close = 42 },
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/table/with_callable_values/functions",
+    args = {
+      value = {
+        read_all = function() end,
+        write = function() end,
+        close = function() end,
+      },
+    },
+    want = luaunit.assert_true,
+  },
+  {
+    name = "test_is_file/table/with_callable_values/tables",
+    args = {
+      value = {
+        read_all = Object:new(12),
+        write = Object:new(23),
+        close = Object:new(42),
+      },
+    },
+    want = luaunit.assert_true,
+  },
+  {
+    name = "test_is_file/table/with_missed_methods/all",
+    args = {
+      value = {
+        test = function() end,
+      },
+    },
+    want = luaunit.assert_false,
+  },
+  {
+    name = "test_is_file/table/with_missed_methods/some",
+    args = {
+      value = {
+        read_all = function() end,
+        write = function() end,
+      },
+    },
+    want = luaunit.assert_false,
+  },
+}) do
+  TestFilesystem[data.name] = function()
+    local result = filesystem.is_file(data.args.value)
+
+    luaunit.assert_is_boolean(result)
+    data.want(result)
+  end
+end

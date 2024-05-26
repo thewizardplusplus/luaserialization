@@ -27,7 +27,9 @@ end
 -- @tparam any value
 -- @treturn bool
 function filesystem.is_file(value)
-  return checks.has_methods(value, {"read_all", "write", "close"})
+  -- TODO: `is_table()` call should be redundant;
+  -- fix it in the `luatypechecks` library
+  return checks.is_table(value) and checks.has_methods(value, {"read_all", "write", "close"})
 end
 
 return filesystem
