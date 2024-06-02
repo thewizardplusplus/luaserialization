@@ -13,7 +13,7 @@ source = {
 }
 dependencies = {
   "lua >= 5.1",
-  "luatypechecks >= 1.3.3, < 2.0",
+  "luatypechecks >= 1.3.4, < 2.0",
   "inspect >= 3.1.3, < 4.0",
   "compat53 >= 0.13, < 1.0",
   "net-url >= 1.1, < 2.0",
