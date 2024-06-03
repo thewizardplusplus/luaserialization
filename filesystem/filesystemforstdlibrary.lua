@@ -21,6 +21,7 @@ local FileSystemForStdLibrary = middleclass("FileSystemForStdLibrary")
 -- @tparam string file_name
 -- @tparam "r"|"w" file_opening_mode
 -- @treturn FileForStdLibrary
+-- @error error message
 function FileSystemForStdLibrary:open(file_name, file_opening_mode)
   assertions.is_string(file_name)
   assertions.is_true(filesystem.is_file_opening_mode(file_opening_mode))

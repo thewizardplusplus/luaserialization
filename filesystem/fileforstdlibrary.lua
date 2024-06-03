@@ -26,7 +26,7 @@ end
 -- @treturn string
 -- @error error message
 function FileForStdLibrary:read_all()
-  local data = self._inner_file:read()
+  local data = self._inner_file:read("*a")
   if data == nil then
     return nil, "unable to read the data"
   end
