@@ -17,7 +17,7 @@ local FileForStdLibrary = middleclass("FileForStdLibrary")
 -- @tparam tab inner_file file handle from the standard library
 -- @treturn FileForStdLibrary
 function FileForStdLibrary:initialize(inner_file)
-  assertions.is_table(inner_file)
+  assertions.is_true(type(inner_file) == "userdata")
 
   self._inner_file = inner_file
 end

@@ -6,7 +6,7 @@ local filesystem = require("luaserialization.filesystem.filesystem")
 TestFileForStdLibrary = {}
 
 function TestFileForStdLibrary.test_interface()
-  local dummy_inner_file = { id = 42 }
+  local dummy_inner_file = io.output()
   local file = FileForStdLibrary:new(dummy_inner_file)
 
   local result = filesystem.is_file(file)
