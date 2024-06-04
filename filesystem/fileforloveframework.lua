@@ -24,19 +24,14 @@ end
 
 ---
 -- @treturn string
--- @error error message
 function FileForLoveFramework:read_all()
-  local file_size = self._inner_file:getSize()
-  local data, read_size = self._inner_file:read(file_size)
-  if read_size < file_size then
-    return nil, "unable to read all the data"
-  end
-
+  local data, _ = self._inner_file:read()
   return data
 end
 
 ---
 -- @tparam string data
+-- @error error message
 function FileForLoveFramework:write(data)
   assertions.is_string(data)
 
@@ -53,6 +48,7 @@ end
 
 ---
 -- @function close
+-- @error error message
 function FileForLoveFramework:close()
   local ok = self._inner_file:close()
   if not ok then

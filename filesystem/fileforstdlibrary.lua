@@ -8,13 +8,13 @@ local assertions = require("luatypechecks.assertions")
 
 ---
 -- @table instance
--- @tfield tab _inner_file file handle from the standard library
+-- @tfield userdata _inner_file file handle from the standard library
 
 local FileForStdLibrary = middleclass("FileForStdLibrary")
 
 ---
 -- @function new
--- @tparam tab inner_file file handle from the standard library
+-- @tparam userdata inner_file file handle from the standard library
 -- @treturn FileForStdLibrary
 function FileForStdLibrary:initialize(inner_file)
   assertions.is_true(type(inner_file) == "userdata")
