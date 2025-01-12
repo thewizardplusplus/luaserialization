@@ -5,7 +5,8 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        luaVersion: ["5.1", "5.2", "5.3", "5.4", "luajit"]
+        # https://github.com/leafo/gh-actions-lua/issues/49
+        luaVersion: ["5.1", "5.2", "5.3", "5.4", "luajit-openresty"]
     steps:
       - uses: actions/checkout@v4
       - uses: leafo/gh-actions-lua@v10
