@@ -29,6 +29,29 @@ function json.to_json(value)
   return encoded_data
 end
 
+--- ⚠️. This function serializes the passed value to JSON and saves it via the callback.
+-- @tparam string path
+-- @tparam any value
+-- @tparam func callback callback for saving JSON; the value should be `func(path: string, data: string): bool`
+-- @treturn bool
+-- @error error message
+function json.save_to_json(path, value, callback)
+  assertions.is_string(path)
+  assertions.is_function(callback)
+
+  local data, err = json.to_json(value)
+  if data == nil then
+    return false, "unable to serialize data: " .. err
+  end
+
+  local ok, err = callback(path, data) -- luacheck: no redefined
+  if not ok then
+    return false, "unable to write data: " .. err
+  end
+
+  return true
+end
+
 --- ⚠️. This function transforms the text in the JSON to a data.
 -- @tparam string text
 -- @tparam[opt] tab schema JSON Schema
@@ -68,30 +91,6 @@ function json.from_json(text, schema, constructors)
   end
 
   return decoded_data
-end
-
-
---- ⚠️. This function serializes the passed value to JSON and saves it via the callback.
--- @tparam string path
--- @tparam any value
--- @tparam func callback callback for saving JSON; the value should be `func(path: string, data: string): bool`
--- @treturn bool
--- @error error message
-function json.save_to_json(path, value, callback)
-  assertions.is_string(path)
-  assertions.is_function(callback)
-
-  local data, err = json.to_json(value)
-  if data == nil then
-    return false, "unable to serialize data: " .. err
-  end
-
-  local ok, err = callback(path, data) -- luacheck: no redefined
-  if not ok then
-    return false, "unable to write data: " .. err
-  end
-
-  return true
 end
 
 --- ⚠️. This function loads JSON via the callback and parses it.

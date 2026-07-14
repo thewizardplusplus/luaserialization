@@ -101,6 +101,28 @@ function ObjectWrapper:__data()
   }
 end
 
+local function _make_save_callback(want_path, want_data, result, err)
+  assertions.is_string(want_path)
+  assertions.is_string(want_data)
+
+  return function(path, data)
+    luaunit.assert_equals(path, want_path)
+    luaunit.assert_equals(data, want_data)
+
+    return result, err
+  end
+end
+
+local function _make_load_callback(want_path, result, err)
+  assertions.is_string(want_path)
+
+  return function(path)
+    luaunit.assert_equals(path, want_path)
+
+    return result, err
+  end
+end
+
 -- luacheck: globals TestJson
 TestJson = {}
 
@@ -189,6 +211,64 @@ for _, data in ipairs({
 }) do
   TestJson[data.name] = function()
     local result, err = json_module.to_json(data.args.value)
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
+
+-- json_module.save_to_json()
+for _, data in ipairs({
+  {
+    name = "test_save_to_json/success",
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+      callback = _make_save_callback("test.json", [[{"one":1}]], true),
+    },
+    want = true,
+    want_err = nil,
+  },
+  {
+    name = "test_save_to_json/error/serialization",
+    args = {
+      path = "test.json",
+      value = function() end,
+      callback = function()
+        error("callback should not be called")
+      end,
+    },
+    want = false,
+    want_err = "^unable to serialize data: "
+      .. "unable to encode the data: .+: unexpected type 'function'$",
+  },
+  {
+    name = "test_save_to_json/error/write",
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+      callback = _make_save_callback(
+        "test.json",
+        [[{"one":1}]],
+        false,
+        "write failed"
+      ),
+    },
+    want = false,
+    want_err = "^unable to write data: write failed$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = json_module.save_to_json(
+      data.args.path,
+      data.args.value,
+      data.args.callback
+    )
 
     luaunit.assert_equals(result, data.want)
     if data.want_err == nil then
@@ -383,86 +463,6 @@ for _, data in ipairs({
       data.args.text,
       data.args.schema,
       data.args.constructors
-    )
-
-    luaunit.assert_equals(result, data.want)
-    if data.want_err == nil then
-        luaunit.assert_is_nil(err)
-    else
-        luaunit.assert_is_string(err)
-        luaunit.assert_str_matches(err, data.want_err)
-    end
-  end
-end
-
-local function _make_save_callback(want_path, want_data, result, err)
-  assertions.is_string(want_path)
-  assertions.is_string(want_data)
-
-  return function(path, data)
-    luaunit.assert_equals(path, want_path)
-    luaunit.assert_equals(data, want_data)
-
-    return result, err
-  end
-end
-
-local function _make_load_callback(want_path, result, err)
-  assertions.is_string(want_path)
-
-  return function(path)
-    luaunit.assert_equals(path, want_path)
-
-    return result, err
-  end
-end
-
--- json_module.save_to_json()
-for _, data in ipairs({
-  {
-    name = "test_save_to_json/success",
-    args = {
-      path = "test.json",
-      value = { one = 1 },
-      callback = _make_save_callback("test.json", [[{"one":1}]], true),
-    },
-    want = true,
-    want_err = nil,
-  },
-  {
-    name = "test_save_to_json/error/serialization",
-    args = {
-      path = "test.json",
-      value = function() end,
-      callback = function()
-        error("callback should not be called")
-      end,
-    },
-    want = false,
-    want_err = "^unable to serialize data: "
-      .. "unable to encode the data: .+: unexpected type 'function'$",
-  },
-  {
-    name = "test_save_to_json/error/write",
-    args = {
-      path = "test.json",
-      value = { one = 1 },
-      callback = _make_save_callback(
-        "test.json",
-        [[{"one":1}]],
-        false,
-        "write failed"
-      ),
-    },
-    want = false,
-    want_err = "^unable to write data: write failed$",
-  },
-}) do
-  TestJson[data.name] = function()
-    local result, err = json_module.save_to_json(
-      data.args.path,
-      data.args.value,
-      data.args.callback
     )
 
     luaunit.assert_equals(result, data.want)
