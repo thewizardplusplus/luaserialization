@@ -15,6 +15,42 @@ end
 
 local json = {}
 
+local function _write_file(path, data)
+  local file, err = io.open(path, "w")
+  if file == nil then
+    return false, err
+  end
+
+  local ok, err = file:write(data)
+  if not ok then
+    file:close()
+
+    return false, err
+  end
+
+  ok, err = file:close()
+  if not ok then
+    return false, err
+  end
+
+  return true
+end
+
+local function _read_file(path)
+  local file, err = io.open(path, "r")
+  if file == nil then
+    return nil, err
+  end
+
+  local data, err = file:read("*a")
+  file:close()
+  if data == nil then
+    return nil, err
+  end
+
+  return data
+end
+
 --- ⚠️. This function gets the value data with the @{data.to_data|data.to_data()} function. Then the function transforms this data into the JSON.
 -- @tparam any value
 -- @treturn string
@@ -32,12 +68,16 @@ end
 --- ⚠️. This function serializes the passed value to JSON and saves it via the callback.
 -- @tparam string path
 -- @tparam any value
--- @tparam func callback callback for saving JSON; the value should be `func(path: string, data: string): bool`
+-- @tparam[opt] func callback callback for saving JSON; the value should be `func(path: string, data: string): bool`; the default implementation uses the standard `io` package
 -- @treturn bool
 -- @error error message
 function json.save_to_json(path, value, callback)
   assertions.is_string(path)
-  assertions.is_function(callback)
+  if callback ~= nil then
+    assertions.is_function(callback)
+  else
+    callback = _write_file
+  end
 
   local data, err = json.to_json(value)
   if data == nil then
@@ -97,14 +137,18 @@ end
 -- @tparam string path
 -- @tparam[opt] tab schema JSON Schema
 -- @tparam[optchain] {[string]=func,...} constructors constructors for tables with the `__name` property; the values should be `func(options: tab): tab`; the constructor can either return an error as the second result or throw it as an exception
--- @tparam func callback callback for loading JSON; the value should be `func(path: string): string`
+-- @tparam[opt] func callback callback for loading JSON; the value should be `func(path: string): string`; the default implementation uses the standard `io` package
 -- @treturn any
 -- @error error message
 function json.load_from_json(path, schema, constructors, callback)
   assertions.is_string(path)
   assertions.is_table_or_nil(schema)
   assertions.is_table_or_nil(constructors, checks.is_string, checks.is_callable)
-  assertions.is_function(callback)
+  if callback ~= nil then
+    assertions.is_function(callback)
+  else
+    callback = _read_file
+  end
 
   local data_in_json, err = callback(path)
   if data_in_json == nil then
