@@ -70,6 +70,56 @@ function json.from_json(text, schema, constructors)
   return decoded_data
 end
 
+
+--- ⚠️. This function serializes the passed value to JSON and saves it via the callback.
+-- @tparam string path
+-- @tparam any value
+-- @tparam func callback callback for saving JSON; the value should be `func(path: string, data: string): bool`
+-- @treturn bool
+-- @error error message
+function json.save_to_json(path, value, callback)
+  assertions.is_string(path)
+  assertions.is_function(callback)
+
+  local data, err = json.to_json(value)
+  if data == nil then
+    return false, "unable to serialize data: " .. err
+  end
+
+  local ok, err = callback(path, data) -- luacheck: no redefined
+  if not ok then
+    return false, "unable to write data: " .. err
+  end
+
+  return true
+end
+
+--- ⚠️. This function loads JSON via the callback and parses it.
+-- @tparam string path
+-- @tparam[opt] tab schema JSON Schema
+-- @tparam[optchain] {[string]=func,...} constructors constructors for tables with the `__name` property; the values should be `func(options: tab): tab`; the constructor can either return an error as the second result or throw it as an exception
+-- @tparam func callback callback for loading JSON; the value should be `func(path: string): string`
+-- @treturn any
+-- @error error message
+function json.load_from_json(path, schema, constructors, callback)
+  assertions.is_string(path)
+  assertions.is_table_or_nil(schema)
+  assertions.is_table_or_nil(constructors, checks.is_string, checks.is_callable)
+  assertions.is_function(callback)
+
+  local data_in_json, err = callback(path)
+  if data_in_json == nil then
+    return nil, "unable to read data: " .. err
+  end
+
+  local data, err = json.from_json(data_in_json, schema, constructors) -- luacheck: no redefined
+  if data == nil then
+    return nil, "unable to parse data: " .. err
+  end
+
+  return data
+end
+
 function json._catch_error(handler, ...)
   assertions.is_function(handler)
 

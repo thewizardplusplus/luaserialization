@@ -394,3 +394,156 @@ for _, data in ipairs({
     end
   end
 end
+
+local function _make_save_callback(want_path, want_data, result, err)
+  assertions.is_string(want_path)
+  assertions.is_string(want_data)
+
+  return function(path, data)
+    luaunit.assert_equals(path, want_path)
+    luaunit.assert_equals(data, want_data)
+
+    return result, err
+  end
+end
+
+local function _make_load_callback(want_path, result, err)
+  assertions.is_string(want_path)
+
+  return function(path)
+    luaunit.assert_equals(path, want_path)
+
+    return result, err
+  end
+end
+
+-- json_module.save_to_json()
+for _, data in ipairs({
+  {
+    name = "test_save_to_json/success",
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+      callback = _make_save_callback("test.json", [[{"one":1}]], true),
+    },
+    want = true,
+    want_err = nil,
+  },
+  {
+    name = "test_save_to_json/error/serialization",
+    args = {
+      path = "test.json",
+      value = function() end,
+      callback = function()
+        error("callback should not be called")
+      end,
+    },
+    want = false,
+    want_err = "^unable to serialize data: "
+      .. "unable to encode the data: .+: unexpected type 'function'$",
+  },
+  {
+    name = "test_save_to_json/error/write",
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+      callback = _make_save_callback(
+        "test.json",
+        [[{"one":1}]],
+        false,
+        "write failed"
+      ),
+    },
+    want = false,
+    want_err = "^unable to write data: write failed$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = json_module.save_to_json(
+      data.args.path,
+      data.args.value,
+      data.args.callback
+    )
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
+
+-- json_module.load_from_json()
+for _, data in ipairs({
+  {
+    name = "test_load_from_json/success",
+    args = {
+      path = "test.json",
+      callback = _make_load_callback("test.json", [[{"one":1}]]),
+    },
+    want = { one = 1 },
+    want_err = nil,
+  },
+  {
+    name = "test_load_from_json/with_schema_and_constructors",
+    args = {
+      path = "test.json",
+      schema = {
+        type = "object",
+        required = {"one"},
+        properties = {
+          one = {
+            type = "object",
+            required = {"__name", "name"},
+          },
+        },
+      },
+      constructors = { Object = Object.from_options },
+      callback = _make_load_callback(
+        "test.json",
+        [[{"one":{"__name":"Object","name":"test-23"}}]]
+      ),
+    },
+    want = { one = Object:new(23) },
+    want_err = nil,
+  },
+  {
+    name = "test_load_from_json/error/read",
+    args = {
+      path = "test.json",
+      callback = _make_load_callback("test.json", nil, "read failed"),
+    },
+    want = nil,
+    want_err = "^unable to read data: read failed$",
+  },
+  {
+    name = "test_load_from_json/error/parse",
+    args = {
+      path = "test.json",
+      callback = _make_load_callback("test.json", "invalid-json"),
+    },
+    want = nil,
+    want_err = "^unable to parse data: unable to decode the data: "
+      .. ".+: "
+      .. "unexpected character 'i' at line 1 col 1$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = json_module.load_from_json(
+      data.args.path,
+      data.args.schema,
+      data.args.constructors,
+      data.args.callback
+    )
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
