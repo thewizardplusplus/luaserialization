@@ -15,27 +15,6 @@ end
 
 local json = {}
 
-local function _write_file(path, data)
-  local file, err = io.open(path, "w")
-  if file == nil then
-    return false, err
-  end
-
-  local ok, err = file:write(data)
-  if not ok then
-    file:close()
-
-    return false, err
-  end
-
-  ok, err = file:close()
-  if not ok then
-    return false, err
-  end
-
-  return true
-end
-
 local function _read_file(path)
   local file, err = io.open(path, "r")
   if file == nil then
@@ -65,28 +44,26 @@ function json.to_json(value)
   return encoded_data
 end
 
---- ⚠️. This function serializes the passed value to JSON and saves it via the callback.
+--- ⚠️. This function serializes the passed value to the JSON with the @{json.to_json|json.to_json()} function and saves the result to the file at the specified path via the file writer.
 -- @tparam string path
 -- @tparam any value
--- @tparam[opt] func callback callback for saving JSON; the value should be `func(path: string, data: string): bool`; the default implementation uses the standard `io` package
+-- @tparam[opt] func file_writer callback for saving the JSON; the value should be `func(path: string, data: string): (bool|nil, error|nil)`; the default implementation uses the standard `io` package
 -- @treturn bool
 -- @error error message
-function json.save_to_json(path, value, callback)
+function json.save_to_json(path, value, file_writer)
+  file_writer = file_writer or json._write_file_by_default
+
   assertions.is_string(path)
-  if callback ~= nil then
-    assertions.is_function(callback)
-  else
-    callback = _write_file
-  end
+  assertions.is_function(file_writer)
 
   local data, err = json.to_json(value)
-  if data == nil then
-    return false, "unable to serialize data: " .. err
+  if err ~= nil then
+    return nil, "unable to serialize the value: " .. err
   end
 
-  local ok, err = callback(path, data) -- luacheck: no redefined
-  if not ok then
-    return false, "unable to write data: " .. err
+  local _, err = file_writer(path, data) -- luacheck: no redefined
+  if err ~= nil then
+    return nil, "unable to write the serialized value: " .. err
   end
 
   return true
@@ -178,6 +155,35 @@ function json._catch_error(handler, ...)
   end
 
   return result
+end
+
+function json._write_file_by_default(path, data)
+  assertions.is_string(path)
+  assertions.is_string(data)
+
+  local file, err = io.open(path, "w")
+  if err ~= nil then
+    return nil, "unable to open the file: " .. err
+  end
+
+  local _, writingErr = file:write(data)
+  local wrappedWritingErr =
+    writingErr and ("unable to write the data to the file: " .. writingErr)
+
+  local _, closingErr = file:close()
+  local wrappedClosingErr =
+    closingErr and ("unable to close the file: " .. closingErr)
+
+  if wrappedWritingErr ~= nil then
+    return nil, wrappedClosingErr
+      and table.concat({wrappedWritingErr, wrappedClosingErr}, "\n")
+      or wrappedWritingErr
+  end
+  if wrappedClosingErr ~= nil then
+    return nil, wrappedClosingErr
+  end
+
+  return true
 end
 
 function json._apply_constructors(value, constructors)

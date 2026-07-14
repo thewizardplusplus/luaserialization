@@ -2,6 +2,10 @@ local luaunit = require("luaunit")
 local json_module = require("luaserialization.json")
 local assertions = require("luatypechecks.assertions")
 local checks = require("luatypechecks.checks")
+local _ENV = require("compat53.module")
+if _VERSION == "Lua 5.1" then
+  setfenv(1, _ENV)
+end
 
 local function _handle_error(err, use_exception)
   assertions.is_string(err)
@@ -12,6 +16,17 @@ local function _handle_error(err, use_exception)
   end
 
   return nil, "error: " .. err
+end
+
+local function _mock_file_writer(options)
+  assertions.is_table(options)
+
+  return function(path, data)
+    luaunit.assert_equals(path, options.want_args.path)
+    luaunit.assert_equals(data, options.want_args.data)
+
+    return table.unpack(options.results)
+  end
 end
 
 local Object = {}
@@ -99,18 +114,6 @@ function ObjectWrapper:__data()
   return {
     object = Object:new(self.id),
   }
-end
-
-local function _make_save_callback(want_path, want_data, result, err)
-  assertions.is_string(want_path)
-  assertions.is_string(want_data)
-
-  return function(path, data)
-    luaunit.assert_equals(path, want_path)
-    luaunit.assert_equals(data, want_data)
-
-    return result, err
-  end
 end
 
 local function _make_load_callback(want_path, result, err)
@@ -229,7 +232,10 @@ for _, data in ipairs({
     args = {
       path = "test.json",
       value = { one = 1 },
-      callback = _make_save_callback("test.json", [[{"one":1}]], true),
+      file_writer = _mock_file_writer({
+        want_args = { path = "test.json", data = [[{"one":1}]] },
+        results = {true},
+      }),
     },
     want = true,
     want_err = nil,
@@ -239,35 +245,33 @@ for _, data in ipairs({
     args = {
       path = "test.json",
       value = function() end,
-      callback = function()
-        error("callback should not be called")
-      end,
+      file_writer = function() error("file writer must not be called") end,
     },
-    want = false,
-    want_err = "^unable to serialize data: "
-      .. "unable to encode the data: .+: unexpected type 'function'$",
+    want = nil,
+    want_err = "^unable to serialize the value: "
+      .. "unable to encode the data: "
+      .. ".+: "
+      .. "unexpected type 'function'$",
   },
   {
     name = "test_save_to_json/error/write",
     args = {
       path = "test.json",
       value = { one = 1 },
-      callback = _make_save_callback(
-        "test.json",
-        [[{"one":1}]],
-        false,
-        "write failed"
-      ),
+      file_writer = _mock_file_writer({
+        want_args = { path = "test.json", data = [[{"one":1}]] },
+        results = {nil, "write failed"},
+      }),
     },
-    want = false,
-    want_err = "^unable to write data: write failed$",
+    want = nil,
+    want_err = "^unable to write the serialized value: write failed$",
   },
 }) do
   TestJson[data.name] = function()
     local result, err = json_module.save_to_json(
       data.args.path,
       data.args.value,
-      data.args.callback
+      data.args.file_writer
     )
 
     luaunit.assert_equals(result, data.want)
