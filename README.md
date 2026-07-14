@@ -24,7 +24,7 @@ _**Disclaimer:** this library was written directly on an Android smartphone with
   - `json.from_json()` function &mdash; this function transforms the text in the JSON to a data:
     - optionally, it can validate the data against a JSON Schema;
     - optionally, it can recreate tables with the `__name` property with the passed constructors;
-  - `json.load_from_json()` function &mdash; this function loads JSON via the passed optional callback and parses it:
+  - `json.load_from_json()` function &mdash; this function loads the JSON via the file reader and transforms it to a data with the `json.from_json()` function:
     - optionally, it can validate the data against a JSON Schema;
     - optionally, it can recreate tables with the `__name` property with the passed constructors.
 

@@ -29,6 +29,16 @@ local function _mock_file_writer(options)
   end
 end
 
+local function _mock_file_reader(options)
+  assertions.is_table(options)
+
+  return function(path)
+    luaunit.assert_equals(path, options.want_args.path)
+
+    return table.unpack(options.results)
+  end
+end
+
 local Object = {}
 
 function Object.from_options(options, use_exception)
@@ -114,16 +124,6 @@ function ObjectWrapper:__data()
   return {
     object = Object:new(self.id),
   }
-end
-
-local function _make_load_callback(want_path, result, err)
-  assertions.is_string(want_path)
-
-  return function(path)
-    luaunit.assert_equals(path, want_path)
-
-    return result, err
-  end
 end
 
 -- luacheck: globals TestJson
@@ -485,13 +485,16 @@ for _, data in ipairs({
     name = "test_load_from_json/success",
     args = {
       path = "test.json",
-      callback = _make_load_callback("test.json", [[{"one":1}]]),
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":1}]]},
+      })
     },
     want = { one = 1 },
     want_err = nil,
   },
   {
-    name = "test_load_from_json/with_schema_and_constructors",
+    name = "test_load_from_json/success/with_schema",
     args = {
       path = "test.json",
       schema = {
@@ -499,16 +502,30 @@ for _, data in ipairs({
         required = {"one"},
         properties = {
           one = {
-            type = "object",
-            required = {"__name", "name"},
+            type = "array",
+            items = { type = "number" },
+            minItems = 2,
+            maxItems = 2,
           },
         },
       },
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":[1,2]}]]},
+      })
+    },
+    want = { one = {1, 2} },
+    want_err = nil,
+  },
+  {
+    name = "test_load_from_json/success/with_constructors",
+    args = {
+      path = "test.json",
       constructors = { Object = Object.from_options },
-      callback = _make_load_callback(
-        "test.json",
-        [[{"one":{"__name":"Object","name":"test-23"}}]]
-      ),
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":{"__name":"Object","name":"test-23"}}]]},
+      })
     },
     want = { one = Object:new(23) },
     want_err = nil,
@@ -517,21 +534,75 @@ for _, data in ipairs({
     name = "test_load_from_json/error/read",
     args = {
       path = "test.json",
-      callback = _make_load_callback("test.json", nil, "read failed"),
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {nil, "read failed"},
+      })
     },
     want = nil,
-    want_err = "^unable to read data: read failed$",
+    want_err = "^unable to read the text: read failed$",
   },
   {
-    name = "test_load_from_json/error/parse",
+    name = "test_load_from_json/error/transform/invalid_json",
     args = {
       path = "test.json",
-      callback = _make_load_callback("test.json", "invalid-json"),
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {"invalid-json"},
+      })
     },
     want = nil,
-    want_err = "^unable to parse data: unable to decode the data: "
+    want_err = "^unable to transform the data: "
+      .. "unable to decode the data: "
       .. ".+: "
       .. "unexpected character 'i' at line 1 col 1$",
+  },
+  {
+    name = "test_load_from_json/error/transform/invalid_data",
+    args = {
+      path = "test.json",
+      schema = {
+        type = "object",
+        required = {"one"},
+        properties = {
+          one = {
+            type = "array",
+            items = { type = "number" },
+            minItems = 2,
+            maxItems = 2,
+          },
+        },
+      },
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":[1,2,3]}]]},
+      })
+    },
+    want = nil,
+    want_err = "^unable to transform the data: "
+      .. "invalid data: "
+      .. [[property "one" validation failed: ]]
+      .. "expect array to have at least 2 items$",
+  },
+  {
+    name = "test_load_from_json"
+      .. "/error/transform"
+      .. "/with_constructors/without_error_throwing",
+    args = {
+      path = "test.json",
+      constructors = { Object = Object.from_options },
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":{"__name":"Object","name":"test"}}]]},
+      })
+    },
+    want = nil,
+    want_err = "^unable to transform the data: "
+      .. "unable to apply the constructors: "
+      .. "unable to apply the constructors: "
+      .. "unable to call the constructor: "
+      .. "error: "
+      .. "the `name` option has an invalid format",
   },
 }) do
   TestJson[data.name] = function()
@@ -539,7 +610,7 @@ for _, data in ipairs({
       data.args.path,
       data.args.schema,
       data.args.constructors,
-      data.args.callback
+      data.args.file_reader
     )
 
     luaunit.assert_equals(result, data.want)
