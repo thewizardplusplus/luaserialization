@@ -68,13 +68,6 @@ local function _with_replaced_field(target, key, replacement, handler)
   return _with_cleanup(handler, function() target[key] = original end)
 end
 
-local function _with_temporary_path(handler)
-  assertions.is_function(handler)
-
-  local path = os.tmpname()
-  return _with_cleanup(handler, function() os.remove(path) end, path)
-end
-
 local Object = {}
 
 function Object.from_options(options, use_exception)
@@ -756,15 +749,19 @@ for _, data in ipairs({
 end
 
 TestJson["test_save_and_load/with_default_file_handlers"] = function()
-  _with_temporary_path(function(path)
-    local value = { one = 1 }
+  local path = os.tmpname()
+  _with_cleanup(
+    function()
+      local value = { one = 1 }
 
-    local saved, save_err = json_module.save_to_json(path, value)
-    luaunit.assert_true(saved)
-    luaunit.assert_is_nil(save_err)
+      local saved, save_err = json_module.save_to_json(path, value)
+      luaunit.assert_is_nil(save_err)
+      luaunit.assert_true(saved)
 
-    local loaded, load_err = json_module.load_from_json(path)
-    luaunit.assert_equals(loaded, value)
-    luaunit.assert_is_nil(load_err)
-  end)
+      local loaded, load_err = json_module.load_from_json(path)
+      luaunit.assert_is_nil(load_err)
+      luaunit.assert_equals(loaded, value)
+    end,
+    function() os.remove(path) end
+  )
 end
