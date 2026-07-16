@@ -39,6 +39,24 @@ local function _mock_file_reader(options)
   end
 end
 
+local function _with_replaced_field(target, key, replacement, handler)
+  assertions.is_table(target)
+  assertions.is_string(key)
+  assertions.is_function(handler)
+
+  local original = target[key]
+  target[key] = replacement
+
+  local results = table.pack(pcall(handler))
+  target[key] = original
+
+  if not results[1] then
+    error(results[2], 0)
+  end
+
+  return table.unpack(results, 2, results.n)
+end
+
 local Object = {}
 
 function Object.from_options(options, use_exception)
@@ -272,6 +290,55 @@ for _, data in ipairs({
       data.args.path,
       data.args.value,
       data.args.file_writer
+    )
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
+
+-- json_module.save_to_json() with the default file writer
+for _, data in ipairs({
+  {
+    name = "test_save_to_json/with_default_file_writer/success",
+    file_writer = _mock_file_writer({
+      want_args = { path = "test.json", data = [[{"one":1}]] },
+      results = {true},
+    }),
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+    },
+    want = true,
+    want_err = nil,
+  },
+  {
+    name = "test_save_to_json/with_default_file_writer/error/write",
+    file_writer = _mock_file_writer({
+      want_args = { path = "test.json", data = [[{"one":1}]] },
+      results = {nil, "write failed"},
+    }),
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+    },
+    want = nil,
+    want_err = "^unable to write the serialized value: write failed$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = _with_replaced_field(
+      json_module,
+      "_write_file_by_default",
+      data.file_writer,
+      function()
+        return json_module.save_to_json(data.args.path, data.args.value)
+      end
     )
 
     luaunit.assert_equals(result, data.want)
@@ -611,6 +678,53 @@ for _, data in ipairs({
       data.args.schema,
       data.args.constructors,
       data.args.file_reader
+    )
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
+
+-- json_module.load_from_json() with the default file reader
+for _, data in ipairs({
+  {
+    name = "test_load_from_json/with_default_file_reader/success",
+    file_reader = _mock_file_reader({
+      want_args = { path = "test.json" },
+      results = {[[{"one":1}]]},
+    }),
+    args = {
+      path = "test.json",
+    },
+    want = { one = 1 },
+    want_err = nil,
+  },
+  {
+    name = "test_load_from_json/with_default_file_reader/error/read",
+    file_reader = _mock_file_reader({
+      want_args = { path = "test.json" },
+      results = {nil, "read failed"},
+    }),
+    args = {
+      path = "test.json",
+    },
+    want = nil,
+    want_err = "^unable to read the text: read failed$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = _with_replaced_field(
+      json_module,
+      "_read_file_by_default",
+      data.file_reader,
+      function()
+        return json_module.load_from_json(data.args.path)
+      end
     )
 
     luaunit.assert_equals(result, data.want)
