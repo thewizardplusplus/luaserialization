@@ -128,7 +128,7 @@ function json._catch_error(handler, ...)
 
   local arguments = table.pack(...)
   local ok, result, err = pcall(function()
-    return handler(table.unpack(arguments))
+    return handler(table.unpack(arguments, 1, arguments.n))
   end)
   if not ok then
     return nil, result

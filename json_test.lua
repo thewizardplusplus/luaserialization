@@ -39,16 +39,16 @@ local function _mock_file_reader(options)
   end
 end
 
-local function _with_replaced_field(target, key, replacement, handler)
-  assertions.is_table(target)
-  assertions.is_string(key)
+local function _with_cleanup(handler, cleanup, ...)
   assertions.is_function(handler)
+  assertions.is_function(cleanup)
 
-  local original = target[key]
-  target[key] = replacement
+  local arguments = table.pack(...)
+  local results = table.pack(pcall(function()
+    return handler(table.unpack(arguments, 1, arguments.n))
+  end))
 
-  local results = table.pack(pcall(handler))
-  target[key] = original
+  cleanup()
 
   if not results[1] then
     error(results[2], 0)
@@ -57,18 +57,22 @@ local function _with_replaced_field(target, key, replacement, handler)
   return table.unpack(results, 2, results.n)
 end
 
+local function _with_replaced_field(target, key, replacement, handler)
+  assertions.is_table(target)
+  assertions.is_string(key)
+  assertions.is_function(handler)
+
+  local original = target[key]
+  target[key] = replacement
+
+  return _with_cleanup(handler, function() target[key] = original end)
+end
+
 local function _with_temporary_path(handler)
   assertions.is_function(handler)
 
   local path = os.tmpname()
-  local results = table.pack(pcall(handler, path))
-  os.remove(path)
-
-  if not results[1] then
-    error(results[2], 0)
-  end
-
-  return table.unpack(results, 2, results.n)
+  return _with_cleanup(handler, function() os.remove(path) end, path)
 end
 
 local Object = {}
