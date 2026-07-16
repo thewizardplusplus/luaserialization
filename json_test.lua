@@ -25,7 +25,7 @@ local function _mock_file_writer(options)
     luaunit.assert_equals(path, options.want_args.path)
     luaunit.assert_equals(data, options.want_args.data)
 
-    return table.unpack(options.results)
+    return table.unpack(options.results, 1, options.results.n)
   end
 end
 
@@ -35,7 +35,7 @@ local function _mock_file_reader(options)
   return function(path)
     luaunit.assert_equals(path, options.want_args.path)
 
-    return table.unpack(options.results)
+    return table.unpack(options.results, 1, options.results.n)
   end
 end
 
@@ -263,7 +263,7 @@ for _, data in ipairs({
       value = { one = 1 },
       file_writer = _mock_file_writer({
         want_args = { path = "test.json", data = [[{"one":1}]] },
-        results = {true},
+        results = table.pack(true),
       }),
     },
     want = true,
@@ -289,7 +289,7 @@ for _, data in ipairs({
       value = { one = 1 },
       file_writer = _mock_file_writer({
         want_args = { path = "test.json", data = [[{"one":1}]] },
-        results = {nil, "write failed"},
+        results = table.pack(nil, "write failed"),
       }),
     },
     want = nil,
@@ -319,7 +319,7 @@ for _, data in ipairs({
     name = "test_save_to_json/with_default_file_writer/success",
     file_writer = _mock_file_writer({
       want_args = { path = "test.json", data = [[{"one":1}]] },
-      results = {true},
+      results = table.pack(true),
     }),
     args = {
       path = "test.json",
@@ -332,7 +332,7 @@ for _, data in ipairs({
     name = "test_save_to_json/with_default_file_writer/error/write",
     file_writer = _mock_file_writer({
       want_args = { path = "test.json", data = [[{"one":1}]] },
-      results = {nil, "write failed"},
+      results = table.pack(nil, "write failed"),
     }),
     args = {
       path = "test.json",
@@ -565,7 +565,7 @@ for _, data in ipairs({
       path = "test.json",
       file_reader = _mock_file_reader({
         want_args = { path = "test.json" },
-        results = {[[{"one":1}]]},
+        results = table.pack([[{"one":1}]]),
       })
     },
     want = { one = 1 },
@@ -589,7 +589,7 @@ for _, data in ipairs({
       },
       file_reader = _mock_file_reader({
         want_args = { path = "test.json" },
-        results = {[[{"one":[1,2]}]]},
+        results = table.pack([[{"one":[1,2]}]]),
       })
     },
     want = { one = {1, 2} },
@@ -602,7 +602,7 @@ for _, data in ipairs({
       constructors = { Object = Object.from_options },
       file_reader = _mock_file_reader({
         want_args = { path = "test.json" },
-        results = {[[{"one":{"__name":"Object","name":"test-23"}}]]},
+        results = table.pack([[{"one":{"__name":"Object","name":"test-23"}}]]),
       })
     },
     want = { one = Object:new(23) },
@@ -614,7 +614,7 @@ for _, data in ipairs({
       path = "test.json",
       file_reader = _mock_file_reader({
         want_args = { path = "test.json" },
-        results = {nil, "read failed"},
+        results = table.pack(nil, "read failed"),
       })
     },
     want = nil,
@@ -626,7 +626,7 @@ for _, data in ipairs({
       path = "test.json",
       file_reader = _mock_file_reader({
         want_args = { path = "test.json" },
-        results = {"invalid-json"},
+        results = table.pack("invalid-json"),
       })
     },
     want = nil,
@@ -653,7 +653,7 @@ for _, data in ipairs({
       },
       file_reader = _mock_file_reader({
         want_args = { path = "test.json" },
-        results = {[[{"one":[1,2,3]}]]},
+        results = table.pack([[{"one":[1,2,3]}]]),
       })
     },
     want = nil,
@@ -671,7 +671,7 @@ for _, data in ipairs({
       constructors = { Object = Object.from_options },
       file_reader = _mock_file_reader({
         want_args = { path = "test.json" },
-        results = {[[{"one":{"__name":"Object","name":"test"}}]]},
+        results = table.pack([[{"one":{"__name":"Object","name":"test"}}]]),
       })
     },
     want = nil,
@@ -707,7 +707,7 @@ for _, data in ipairs({
     name = "test_load_from_json/with_default_file_reader/success",
     file_reader = _mock_file_reader({
       want_args = { path = "test.json" },
-      results = {[[{"one":1}]]},
+      results = table.pack([[{"one":1}]]),
     }),
     args = {
       path = "test.json",
@@ -719,7 +719,7 @@ for _, data in ipairs({
     name = "test_load_from_json/with_default_file_reader/error/read",
     file_reader = _mock_file_reader({
       want_args = { path = "test.json" },
-      results = {nil, "read failed"},
+      results = table.pack(nil, "read failed"),
     }),
     args = {
       path = "test.json",
