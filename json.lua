@@ -29,6 +29,31 @@ function json.to_json(value)
   return encoded_data
 end
 
+--- ⚠️. This function serializes the passed value to the JSON with the @{json.to_json|json.to_json()} function and saves the result to the file at the specified path via the file writer.
+-- @tparam string path
+-- @tparam any value
+-- @tparam[opt] func file_writer callback for saving the JSON; the value should be `func(path: string, data: string): (bool|nil, error|nil)`; the default implementation uses the standard `io` package
+-- @treturn bool
+-- @error error message
+function json.save_to_json(path, value, file_writer)
+  file_writer = file_writer or json._write_file_by_default
+
+  assertions.is_string(path)
+  assertions.is_function(file_writer)
+
+  local data, err = json.to_json(value)
+  if err ~= nil then
+    return nil, "unable to serialize the value: " .. err
+  end
+
+  local _, err = file_writer(path, data) -- luacheck: no redefined
+  if err ~= nil then
+    return nil, "unable to write the serialized value: " .. err
+  end
+
+  return true
+end
+
 --- ⚠️. This function transforms the text in the JSON to a data.
 -- @tparam string text
 -- @tparam[opt] tab schema JSON Schema
@@ -70,12 +95,40 @@ function json.from_json(text, schema, constructors)
   return decoded_data
 end
 
+--- ⚠️. This function loads the JSON via the file reader and transforms it to a data with the @{json.from_json|json.from_json()} function.
+-- @tparam string path
+-- @tparam[opt] tab schema JSON Schema
+-- @tparam[optchain] {[string]=func,...} constructors constructors for tables with the `__name` property; the values should be `func(options: tab): tab`; the constructor can either return an error as the second result or throw it as an exception
+-- @tparam[optchain] func file_reader callback for loading the JSON; the value should be `func(path: string): (string|nil, error|nil)`; the default implementation uses the standard `io` package
+-- @treturn any
+-- @error error message
+function json.load_from_json(path, schema, constructors, file_reader)
+  file_reader = file_reader or json._read_file_by_default
+
+  assertions.is_string(path)
+  assertions.is_table_or_nil(schema)
+  assertions.is_table_or_nil(constructors, checks.is_string, checks.is_callable)
+  assertions.is_function(file_reader)
+
+  local text, err = file_reader(path)
+  if err ~= nil then
+    return nil, "unable to read the text: " .. err
+  end
+
+  local data, err = json.from_json(text, schema, constructors) -- luacheck: no redefined
+  if err ~= nil then
+    return nil, "unable to transform the data: " .. err
+  end
+
+  return data
+end
+
 function json._catch_error(handler, ...)
   assertions.is_function(handler)
 
   local arguments = table.pack(...)
   local ok, result, err = pcall(function()
-    return handler(table.unpack(arguments))
+    return handler(table.unpack(arguments, 1, arguments.n))
   end)
   if not ok then
     return nil, result
@@ -85,6 +138,63 @@ function json._catch_error(handler, ...)
   end
 
   return result
+end
+
+function json._write_file_by_default(path, data)
+  assertions.is_string(path)
+  assertions.is_string(data)
+
+  local file, err = io.open(path, "w")
+  if err ~= nil then
+    return nil, "unable to open the file: " .. err
+  end
+
+  local _, writingErr = file:write(data)
+  local wrappedWritingErr =
+    writingErr and ("unable to write the data to the file: " .. writingErr)
+
+  local _, closingErr = file:close()
+  local wrappedClosingErr =
+    closingErr and ("unable to close the file: " .. closingErr)
+
+  if wrappedWritingErr ~= nil then
+    return nil, wrappedClosingErr
+      and table.concat({wrappedWritingErr, wrappedClosingErr}, "\n")
+      or wrappedWritingErr
+  end
+  if wrappedClosingErr ~= nil then
+    return nil, wrappedClosingErr
+  end
+
+  return true
+end
+
+function json._read_file_by_default(path)
+  assertions.is_string(path)
+
+  local file, err = io.open(path, "r")
+  if err ~= nil then
+    return nil, "unable to open the file: " .. err
+  end
+
+  local data, readingErr = file:read("*a")
+  local wrappedReadingErr =
+    readingErr and ("unable to read the data from the file: " .. readingErr)
+
+  local _, closingErr = file:close()
+  local wrappedClosingErr =
+    closingErr and ("unable to close the file: " .. closingErr)
+
+  if wrappedReadingErr ~= nil then
+    return nil, wrappedClosingErr
+      and table.concat({wrappedReadingErr, wrappedClosingErr}, "\n")
+      or wrappedReadingErr
+  end
+  if wrappedClosingErr ~= nil then
+    return nil, wrappedClosingErr
+  end
+
+  return data
 end
 
 function json._apply_constructors(value, constructors)

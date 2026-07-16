@@ -2,6 +2,10 @@ local luaunit = require("luaunit")
 local json_module = require("luaserialization.json")
 local assertions = require("luatypechecks.assertions")
 local checks = require("luatypechecks.checks")
+local _ENV = require("compat53.module")
+if _VERSION == "Lua 5.1" then
+  setfenv(1, _ENV)
+end
 
 local function _handle_error(err, use_exception)
   assertions.is_string(err)
@@ -12,6 +16,56 @@ local function _handle_error(err, use_exception)
   end
 
   return nil, "error: " .. err
+end
+
+local function _mock_file_writer(options)
+  assertions.is_table(options)
+
+  return function(path, data)
+    luaunit.assert_equals(path, options.want_args.path)
+    luaunit.assert_equals(data, options.want_args.data)
+
+    return table.unpack(options.results)
+  end
+end
+
+local function _mock_file_reader(options)
+  assertions.is_table(options)
+
+  return function(path)
+    luaunit.assert_equals(path, options.want_args.path)
+
+    return table.unpack(options.results)
+  end
+end
+
+local function _with_cleanup(handler, cleanup, ...)
+  assertions.is_function(handler)
+  assertions.is_function(cleanup)
+
+  local arguments = table.pack(...)
+  local results = table.pack(pcall(function()
+    return handler(table.unpack(arguments, 1, arguments.n))
+  end))
+
+  cleanup()
+
+  if not results[1] then
+    error(results[2], 0)
+  end
+
+  return table.unpack(results, 2, results.n)
+end
+
+local function _with_replaced_field(target, key, replacement, handler)
+  assertions.is_table(target)
+  assertions.is_string(key)
+  assertions.is_function(handler)
+
+  local original = target[key]
+  target[key] = replacement
+
+  return _with_cleanup(handler, function() target[key] = original end)
 end
 
 local Object = {}
@@ -189,6 +243,114 @@ for _, data in ipairs({
 }) do
   TestJson[data.name] = function()
     local result, err = json_module.to_json(data.args.value)
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
+
+-- json_module.save_to_json()
+for _, data in ipairs({
+  {
+    name = "test_save_to_json/success",
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+      file_writer = _mock_file_writer({
+        want_args = { path = "test.json", data = [[{"one":1}]] },
+        results = {true},
+      }),
+    },
+    want = true,
+    want_err = nil,
+  },
+  {
+    name = "test_save_to_json/error/serialization",
+    args = {
+      path = "test.json",
+      value = function() end,
+      file_writer = function() error("file writer must not be called") end,
+    },
+    want = nil,
+    want_err = "^unable to serialize the value: "
+      .. "unable to encode the data: "
+      .. ".+: "
+      .. "unexpected type 'function'$",
+  },
+  {
+    name = "test_save_to_json/error/write",
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+      file_writer = _mock_file_writer({
+        want_args = { path = "test.json", data = [[{"one":1}]] },
+        results = {nil, "write failed"},
+      }),
+    },
+    want = nil,
+    want_err = "^unable to write the serialized value: write failed$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = json_module.save_to_json(
+      data.args.path,
+      data.args.value,
+      data.args.file_writer
+    )
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
+
+-- json_module.save_to_json() with the default file writer
+for _, data in ipairs({
+  {
+    name = "test_save_to_json/with_default_file_writer/success",
+    file_writer = _mock_file_writer({
+      want_args = { path = "test.json", data = [[{"one":1}]] },
+      results = {true},
+    }),
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+    },
+    want = true,
+    want_err = nil,
+  },
+  {
+    name = "test_save_to_json/with_default_file_writer/error/write",
+    file_writer = _mock_file_writer({
+      want_args = { path = "test.json", data = [[{"one":1}]] },
+      results = {nil, "write failed"},
+    }),
+    args = {
+      path = "test.json",
+      value = { one = 1 },
+    },
+    want = nil,
+    want_err = "^unable to write the serialized value: write failed$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = _with_replaced_field(
+      json_module,
+      "_write_file_by_default",
+      data.file_writer,
+      function()
+        return json_module.save_to_json(data.args.path, data.args.value)
+      end
+    )
 
     luaunit.assert_equals(result, data.want)
     if data.want_err == nil then
@@ -393,4 +555,213 @@ for _, data in ipairs({
         luaunit.assert_str_matches(err, data.want_err)
     end
   end
+end
+
+-- json_module.load_from_json()
+for _, data in ipairs({
+  {
+    name = "test_load_from_json/success",
+    args = {
+      path = "test.json",
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":1}]]},
+      })
+    },
+    want = { one = 1 },
+    want_err = nil,
+  },
+  {
+    name = "test_load_from_json/success/with_schema",
+    args = {
+      path = "test.json",
+      schema = {
+        type = "object",
+        required = {"one"},
+        properties = {
+          one = {
+            type = "array",
+            items = { type = "number" },
+            minItems = 2,
+            maxItems = 2,
+          },
+        },
+      },
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":[1,2]}]]},
+      })
+    },
+    want = { one = {1, 2} },
+    want_err = nil,
+  },
+  {
+    name = "test_load_from_json/success/with_constructors",
+    args = {
+      path = "test.json",
+      constructors = { Object = Object.from_options },
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":{"__name":"Object","name":"test-23"}}]]},
+      })
+    },
+    want = { one = Object:new(23) },
+    want_err = nil,
+  },
+  {
+    name = "test_load_from_json/error/read",
+    args = {
+      path = "test.json",
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {nil, "read failed"},
+      })
+    },
+    want = nil,
+    want_err = "^unable to read the text: read failed$",
+  },
+  {
+    name = "test_load_from_json/error/transform/invalid_json",
+    args = {
+      path = "test.json",
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {"invalid-json"},
+      })
+    },
+    want = nil,
+    want_err = "^unable to transform the data: "
+      .. "unable to decode the data: "
+      .. ".+: "
+      .. "unexpected character 'i' at line 1 col 1$",
+  },
+  {
+    name = "test_load_from_json/error/transform/invalid_data",
+    args = {
+      path = "test.json",
+      schema = {
+        type = "object",
+        required = {"one"},
+        properties = {
+          one = {
+            type = "array",
+            items = { type = "number" },
+            minItems = 2,
+            maxItems = 2,
+          },
+        },
+      },
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":[1,2,3]}]]},
+      })
+    },
+    want = nil,
+    want_err = "^unable to transform the data: "
+      .. "invalid data: "
+      .. [[property "one" validation failed: ]]
+      .. "expect array to have at least 2 items$",
+  },
+  {
+    name = "test_load_from_json"
+      .. "/error/transform"
+      .. "/with_constructors/without_error_throwing",
+    args = {
+      path = "test.json",
+      constructors = { Object = Object.from_options },
+      file_reader = _mock_file_reader({
+        want_args = { path = "test.json" },
+        results = {[[{"one":{"__name":"Object","name":"test"}}]]},
+      })
+    },
+    want = nil,
+    want_err = "^unable to transform the data: "
+      .. "unable to apply the constructors: "
+      .. "unable to apply the constructors: "
+      .. "unable to call the constructor: "
+      .. "error: "
+      .. "the `name` option has an invalid format",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = json_module.load_from_json(
+      data.args.path,
+      data.args.schema,
+      data.args.constructors,
+      data.args.file_reader
+    )
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
+
+-- json_module.load_from_json() with the default file reader
+for _, data in ipairs({
+  {
+    name = "test_load_from_json/with_default_file_reader/success",
+    file_reader = _mock_file_reader({
+      want_args = { path = "test.json" },
+      results = {[[{"one":1}]]},
+    }),
+    args = {
+      path = "test.json",
+    },
+    want = { one = 1 },
+    want_err = nil,
+  },
+  {
+    name = "test_load_from_json/with_default_file_reader/error/read",
+    file_reader = _mock_file_reader({
+      want_args = { path = "test.json" },
+      results = {nil, "read failed"},
+    }),
+    args = {
+      path = "test.json",
+    },
+    want = nil,
+    want_err = "^unable to read the text: read failed$",
+  },
+}) do
+  TestJson[data.name] = function()
+    local result, err = _with_replaced_field(
+      json_module,
+      "_read_file_by_default",
+      data.file_reader,
+      function()
+        return json_module.load_from_json(data.args.path)
+      end
+    )
+
+    luaunit.assert_equals(result, data.want)
+    if data.want_err == nil then
+        luaunit.assert_is_nil(err)
+    else
+        luaunit.assert_is_string(err)
+        luaunit.assert_str_matches(err, data.want_err)
+    end
+  end
+end
+
+TestJson["test_save_and_load/with_default_file_handlers"] = function()
+  local path = os.tmpname()
+  _with_cleanup(
+    function()
+      local value = { one = 1 }
+
+      local saved, save_err = json_module.save_to_json(path, value)
+      luaunit.assert_is_nil(save_err)
+      luaunit.assert_true(saved)
+
+      local loaded, load_err = json_module.load_from_json(path)
+      luaunit.assert_is_nil(load_err)
+      luaunit.assert_equals(loaded, value)
+    end,
+    function() os.remove(path) end
+  )
 end
