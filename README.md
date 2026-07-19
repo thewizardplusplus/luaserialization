@@ -20,13 +20,15 @@ _**Disclaimer:** this library was written directly on an Android smartphone with
   - `Stringifiable` mixin &mdash; this mixin adds the `__tostring()` metamethod that calls the `string.to_string()` function;
 - serialization to JSON:
   - `json.to_json()` function &mdash; this function calls the `data.to_data()` function and then transforms the data into the JSON;
-  - `json.save_to_json()` function &mdash; this function serializes the passed value to the JSON with the `json.to_json()` function and saves the result to the file at the specified path via the file writer;
+  - `json.save_to_json()` function &mdash; this function serializes the passed value to the JSON with the `json.to_json()` function and saves the result to the file at the specified path via the file writer:
+    - the default implementation of the file writer uses the standard `io` package;
   - `json.from_json()` function &mdash; this function transforms the text in the JSON to a data:
     - optionally, it can validate the data against a JSON Schema;
     - optionally, it can recreate tables with the `__name` property with the passed constructors;
   - `json.load_from_json()` function &mdash; this function loads the JSON via the file reader and transforms it to a data with the `json.from_json()` function:
     - optionally, it can validate the data against a JSON Schema;
-    - optionally, it can recreate tables with the `__name` property with the passed constructors.
+    - optionally, it can recreate tables with the `__name` property with the passed constructors;
+    - the default implementation of the file reader uses the standard `io` package.
 
 ## Installation
 
@@ -38,4 +40,4 @@ $ luarocks install luaserialization
 
 The MIT License (MIT)
 
-Copyright &copy; 2024 thewizardplusplus
+Copyright &copy; 2024, 2026 thewizardplusplus
